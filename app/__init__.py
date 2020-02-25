@@ -34,8 +34,8 @@ def register_dashapp(app, title, base_pathname, layout, register_callbacks_fun):
 
     my_dashapp = dash.Dash(__name__,
                            server=app,
-                           url_base_pathname='/{}/'.format(base_pathname),
-                           assets_folder=get_root_path(__name__) + '/{}/'.format(base_pathname) + '/assets/',
+                           url_base_pathname=f'/{base_pathname}/',
+                           assets_folder=get_root_path(__name__) + f'/{base_pathname}/assets/',
                            meta_tags=[meta_viewport])
 
     with app.app_context():
@@ -47,7 +47,7 @@ def register_dashapp(app, title, base_pathname, layout, register_callbacks_fun):
 
 def _protect_dashviews(dashapp):
     for view_func in dashapp.server.view_functions:
-        if view_func.startswith(dashapp.url_base_pathname):
+        if view_func.startswith(dashapp.config.url_base_pathname):
             dashapp.server.view_functions[view_func] = login_required(dashapp.server.view_functions[view_func])
 
 
