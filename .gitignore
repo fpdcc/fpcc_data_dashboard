@@ -13,6 +13,11 @@ __pycache__
 # DB
 app.db
 
+# credentials
+creds.py
+
+migrations
+
 .config
 
 zappa_settings.json
