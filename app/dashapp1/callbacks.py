@@ -1,5 +1,5 @@
 import pandas as pd
-import geopandas as gpd
+# import geopandas as gpd
 from dash.dependencies import Input
 from dash.dependencies import Output
 from .layout import *
