@@ -1,7 +1,6 @@
 # Imports
 import sys, os
 import dash
-# from dash.dependencies import Input, Output, State
 import dash_core_components as dcc
 import dash_html_components as html
 import dash_bootstrap_components as dbc
@@ -9,101 +8,95 @@ import dash_table
 import dash_table.FormatTemplate as FormatTemplate
 import pandas as pd
 import pandas.io.sql as psql
-# import plotly.graph_objs as go
 import plotly.express as px
 import psycopg2 as pg
 import numpy as np
-#from .. import creds as creds
 import json
 import geojson
-from urllib.request import urlopen
-from pandas.io.json import json_normalize
-# import geopandas as gpd
 from pathlib import Path
 
 basedir = Path(os.path.abspath(os.path.dirname(__file__))).parent
 datadir = Path(basedir / 'assets')
 POSTGRESQL = os.environ.get('POSTGRESQL')
 
-# Load and preprocess data
-# filename = os.path.join(app.instance_path, 'my_folder', 'my_file.txt')
-
 #project data
-# conn_string = "host="+ creds.PGHOST +" port="+ str(creds.PGPORT) +" dbname="+ creds.PGDATABASE +" user=" + creds.PGUSER +" password="+ creds.PGPASSWORD
 conn_string=POSTGRESQL
 connection=pg.connect(conn_string)
 cur = connection.cursor()
 
-#query commissioner district table for geoJson
-cd_query = """SELECT jsonb_build_object('type','FeatureCollection','features', jsonb_agg(feature))
-FROM (SELECT jsonb_build_object(
-'type','Feature','id',ogc_fid,'geometry',ST_AsGeoJSON(st_transform(geom, 4326))::jsonb,'properties',
-to_jsonb(inputs) - 'ogc_fid' - 'geom') AS feature
-FROM (SELECT * FROM public.commdistricts) inputs) features;""".replace('\n',' ')
+with connection:
+    with cur:
 
-cur.execute(cd_query)
+        ##############################################
+        # query commissioner district table for geoJson
+        cd_query = """SELECT jsonb_build_object('type','FeatureCollection','features', jsonb_agg(feature))
+        FROM (SELECT jsonb_build_object(
+        'type','Feature','id',ogc_fid,'geometry',ST_AsGeoJSON(st_transform(geom, 4326))::jsonb,'properties',
+        to_jsonb(inputs) - 'ogc_fid' - 'geom') AS feature
+        FROM (SELECT * FROM public.commdistricts) inputs) features;""".replace('\n',' ')
 
-# commissioner district geojson
-geoj = cur.fetchall()
-geoj2 = geoj[0][0]
-geoj3 = json.dumps(geoj2)
-comm_dist_gj = geojson.loads(geoj3)
-cur.close()
+        cur.execute(cd_query)
+        geoj = cur.fetchall()
+        geoj2 = geoj[0][0]
+        geoj3 = json.dumps(geoj2)
+        # commissioner district geojson
+        comm_dist_gj = geojson.loads(geoj3)
 
-# df for list of commissioner districts
+        ################################
+        # query senate table for geoJson
+        sen_query = sen_query = """SELECT jsonb_build_object('type','FeatureCollection','features', jsonb_agg(feature)) FROM (SELECT jsonb_build_object('type','Feature','id',name,'geometry',ST_AsGeoJSON(st_transform(geom, 4326))::jsonb,'properties',to_jsonb(inputs) - 'name' - 'geom' - 'ogc_fid' - 'lsy' - 'awater' - 'aland' - 'lsad' - 'district' - 'district_1' - 'geoid' - 'sldust' - 'statefp' - 'affgeoid') AS feature FROM (SELECT * FROM public.il_senate_cb_2017_17_sldu_500k_cc) inputs) features;""".replace('\n',' ')
+
+        cur.execute(sen_query)
+        sengeoj = cur.fetchall()
+        sengeoj2 = sengeoj[0][0]
+        sengeoj3 = json.dumps(sengeoj2)
+        # senate district geojson
+        senate_gj = geojson.loads(sengeoj3)
+
+        ###############################
+        # query house table for geoJson
+        house_query = """SELECT jsonb_build_object(
+        'type','FeatureCollection',
+        'features', jsonb_agg(feature)
+        )
+        FROM (
+        SELECT jsonb_build_object(
+        'type','Feature',
+        'id', name,
+        'geometry', ST_AsGeoJSON(st_transform(geom, 4326))::jsonb,
+        'properties', to_jsonb(inputs) - 'geom'
+        ) AS feature
+        FROM (SELECT * FROM public.il_house_cb_2017_17_sldl_500k_cc) inputs) features;""".replace('\n',' ')
+
+        cur.execute(house_query)
+        hougeoj = cur.fetchall()
+        hougeoj2 = hougeoj[0][0]
+        hougeoj3 = json.dumps(hougeoj2)
+        # house district geojson
+        house_gj = geojson.loads(hougeoj3)
+
+# df for list of house districts to display on map
+house_df = pd.read_sql_query('select id, name as district, st_astext(st_transform(geom,4326),10) as geom from public.il_house_cb_2017_17_sldl_500k_cc',con=connection)
+house_df = pd.DataFrame(house_df.drop(columns='geom'))
+hd_list = house_df.astype({'district': 'int32'}).sort_values('district')
+
+# df for list of commissioner districts to display on map
 commdist_df = pd.read_sql_query('select ogc_fid as id, district, st_astext(st_transform(geom,4326),10) as geom from public.commdistricts',con=connection)
 commdist_df = pd.DataFrame(commdist_df.drop(columns='geom'))
+cd_list = commdist_df.astype({'district': 'int32'}).sort_values('district')
 
+# df for list of senate districts to display on map
+senate_df = pd.read_sql_query('select id, name as district, st_astext(st_transform(geom,4326),10) as geom from public.il_senate_cb_2017_17_sldu_500k_cc',con=connection)
+senate_df = pd.DataFrame(senate_df.drop(columns='geom'))
+sd_list = senate_df.astype({'district': 'int32'}).sort_values('district')
+
+##############
 # for table
 df = pd.read_sql_query('select * from public.fpcc_capital_needs_non_mft_21_24',con=connection)
 df.set_index('id', inplace=True, drop=False)
 
-# import commissioner district geoJson
-# geojson must have id and district fields
-# comm_dist_file = datadir / "comm_dist_4326.geojson"
-# comm_dist_url = "https://fpcc-opendata.s3.us-east-2.amazonaws.com/comm_dist_4326.geojson"
-# comm_dist_gj = gpd.read_file(comm_dist_url)
-# with open(comm_dist_url) as response:
-#     comm_dist_gj = json.load(response)
-# comm_dist_gj = pd.read_json(comm_dist_url, orient='index')
-
-# create a comm dist df to display map
-# new_comm_dist = pd.DataFrame(comm_dist_gj.drop(columns='geometry'))
-# new_comm_dist = json_normalize(comm_dist_gj['features'])
-# new_comm_dist = new_comm_dist[['properties.ogc_fid', 'properties.district']]
-# new_comm_dist = new_comm_dist.rename(columns={'ogc_fid': 'id'})
-cd_list = commdist_df.astype({'district': 'int32'}).sort_values('district')
-
-# import senate geoJson
-# senate_file = datadir / 'senate_4326.geojson'
-# senate_url = "https://fpcc-opendata.s3.us-east-2.amazonaws.com/senate_4326.geojson"
-# senate_gj = gpd.read_file(senate_url)
-# with open('./senate_4326.geojson') as response:
-#    senate_gj = json.load(response)
-
-# create a senate dist df to display map
-# new_senate = pd.DataFrame(senate_gj.drop(columns='geometry'))
-# new_senate = json_normalize(senate_gj['features'])
-# new_senate = new_senate[['properties.id', 'properties.district']]
-# new_senate = new_senate.rename(columns={'id': 'id','district': 'district'})
-# sd_list = new_senate.astype({'district': 'int32'}).sort_values('district')
-
-#import house geoJson
-# house_file = datadir / 'house_4326.geojson'
-# house_url = "https://fpcc-opendata.s3.us-east-2.amazonaws.com/house_4326.geojson"
-# house_gj = gpd.read_file(house_url)
-# with open('./house_4326.geojson') as response:
-#    house_gj = json.load(response)
-
-# create a house dist df to display map
-# new_house = pd.DataFrame(house_gj.drop(columns='geometry'))
-# new_house = json_normalize(house_gj['features'])
-# new_house = new_house[['properties.id', 'properties.district']]
-# new_house = new_house.rename(columns={'properties.id': 'id','properties.district': 'district'})
-# hd_list = new_house.astype({'district': 'int32'}).sort_values('district')
-
-# selected_commdist_gj = comm_dist_gj.loc[comm_dist_gj['district'].isin(['1'])]
-# selected_commdist_df = new_comm_dist.loc[new_comm_dist['district'] == '1']
+# close cursor
+connection.close()
 
 theme_colors = []
 
@@ -162,30 +155,36 @@ navbar = dbc.NavbarSimple(
 body = dbc.Container(
     children=[
 
+        dbc.Row([
+            dbc.Col(
+                html.Div("Select a District to filter by.")
+            )
+        ]),
+
 # Row for dropdown menus
          dbc.Row([
-                # dbc.Col(
-                #     html.Div(
-                #         dcc.Dropdown(
-                #             id='senate_dropdown',
-                #             value = 0,
-                #             placeholder="Select Senate District",
-                #             options=[{'label':ns, 'value':ns} for ns in sd_list['district']],
-                #             multi=True
-                #             ),className="my-2"
-                #         ),md=4
-                #     ),
-                # dbc.Col(
-                #     html.Div(
-                #         dcc.Dropdown(
-                #             id='house_dropdown',
-                #             value = 0,
-                #             placeholder="Select House District",
-                #             options=[{'label':ns, 'value':ns} for ns in hd_list['district']],
-                #             multi=True
-                #             ),className="my-2"
-                #         ),md=4
-                #     ),
+                dbc.Col(
+                    html.Div(
+                        dcc.Dropdown(
+                            id='senate_dropdown',
+                            value = 0,
+                            placeholder="Select Senate District",
+                            options=[{'label':ns, 'value':ns} for ns in sd_list['district']],
+                            multi=True
+                            ),className="my-2"
+                        ),md=4
+                    ),
+                dbc.Col(
+                    html.Div(
+                        dcc.Dropdown(
+                            id='house_dropdown',
+                            value = 0,
+                            placeholder="Select House District",
+                            options=[{'label':ns, 'value':ns} for ns in hd_list['district']],
+                            multi=True
+                            ),className="my-2"
+                        ),md=4
+                    ),
                 dbc.Col(
                     html.Div(
                         dcc.Dropdown(
@@ -201,37 +200,38 @@ body = dbc.Container(
 
 # Row for maps
          dbc.Row([
-                # dbc.Col(
-                #     html.Div([
-                #             dbc.Spinner(color="primary", size='lg',
-                #                 children=[dcc.Graph(
-                #                                 id = 'senate_map',
-                #                                 #figure = create_map(new_senate, senate_gj)
-                #                                     )
-                #                         ]),
-                #             ]),md=4, className="d-none d-sm-block" #removes map on small devices
-                #     ),
-                # dbc.Col(
-                #     html.Div([
-                #             dbc.Spinner(color="primary", size="lg",
-                #                 children=[dcc.Graph(
-                #                                 id = 'house_map',
-                #                                 #figure = create_map(new_house, house_gj)
-                #                                 )
-                #                         ]),
-                #             ]),md=4, className="d-none d-sm-block" #removes map on small devices
-                #     ),
                 dbc.Col(
-                 html.Div([
-                         dbc.Spinner(color="primary", size='lg',
-                             children=[dcc.Graph(
-                                             id = 'commdist_map',
-                                             figure = create_map(commdist_df, comm_dist_gj)
-                                             )
-                                     ]),
-                         ]),md=4, className="d-none d-sm-block" #removes map on small devices
+                    html.Div([
+                            dbc.Spinner(color="primary", size='lg',
+                                children=[dcc.Graph(
+                                                id = 'senate_map',
+                                                figure = create_map(senate_df, senate_gj)
+                                                    )
+                                        ]),
+                            ]),md=4, className="d-none d-sm-block" #removes map on small devices
+                    ),
+                dbc.Col(
+                    html.Div([
+                            dbc.Spinner(color="primary", size="lg",
+                                children=[dcc.Graph(
+                                                id = 'house_map',
+                                                figure = create_map(house_df, house_gj)
+                                                )
+                                        ]),
+                            ]),md=4, className="d-none d-sm-block" #removes map on small devices
+                    ),
+                dbc.Col(
+                     html.Div([
+                             dbc.Spinner(color="primary", size='lg',
+                                 children=[dcc.Graph(
+                                                 id = 'commdist_map',
+                                                 figure = create_map(commdist_df, comm_dist_gj)
+                                                 )
+                                         ]),
+                             ]),md=4, className="d-none d-sm-block" #removes map on small devices
+
                  ),
-         ],justify="center", id='maps'),
+            ],justify="center", id='maps'),
 
 # Data table
         dbc.Row([
@@ -239,6 +239,7 @@ body = dbc.Container(
                 html.Div(
                     dash_table.DataTable(
                                 id='the-table',
+                                export_format='xlsx',
                                 columns=[
                                         {"name": ["", "Id"],
                                         "id": "project_id"},
@@ -323,18 +324,7 @@ body = dbc.Container(
                             ),
                         ), id='div_table',
                     ),
-        ],id='row_table'),
-
-# Export button
-        dbc.Row([
-            dbc.Col(
-                html.Div(
-                    dbc.Button("Export", color="primary"),
-                        ),
-                        style={'padding': '5px'},
-                        md=4
-                    ),
-            ]),
+            ],id='row_table'),
 
         # dbc.Row(dbc.Col(html.Div(str(new_comm_dist)),style={'height': '100px', 'width': 'auto', 'color': 'green'}))
 
