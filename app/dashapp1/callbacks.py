@@ -27,7 +27,7 @@ def sql_query(table, district):
                 'properties', to_jsonb(inputs) - 'geom'
                 ) AS feature
                 FROM (
-                SELECT * FROM public.%s where name in ('%s')) inputs) features;""",[table, district].replace('\n',' ')
+                SELECT * FROM public.{} where name in ('{}')) inputs) features;""".format(table, district).replace('\n',' ')
 
                 cur.execute(query)
                 geoj = cur.fetchall()

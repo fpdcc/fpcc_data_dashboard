@@ -19,78 +19,10 @@ from pathlib import Path
 basedir = Path(os.path.abspath(os.path.dirname(__file__))).parent
 datadir = Path(basedir / 'assets')
 POSTGRESQL = os.environ.get('POSTGRESQL')
-
-#project data
-conn_string=POSTGRESQL
-connection=pg.connect(conn_string)
-cur = connection.cursor()
-
-with connection:
-    with cur:
-
-        ##############################################
-        # query commissioner district table for geoJson
-        cd_query = """SELECT jsonb_build_object('type','FeatureCollection','features', jsonb_agg(feature))
-        FROM (SELECT jsonb_build_object(
-        'type','Feature','id',ogc_fid,'geometry',ST_AsGeoJSON(st_transform(geom, 4326))::jsonb,'properties',
-        to_jsonb(inputs) - 'ogc_fid' - 'geom') AS feature
-        FROM (SELECT * FROM public.commdistricts) inputs) features;""".replace('\n',' ')
-
-        cur.execute(cd_query)
-        geoj = cur.fetchall()
-        geoj2 = geoj[0][0]
-        geoj3 = json.dumps(geoj2)
-        # commissioner district geojson
-        comm_dist_gj = geojson.loads(geoj3)
-
-        ################################
-        # query senate table for geoJson
-        sen_query = sen_query = """SELECT jsonb_build_object('type','FeatureCollection','features', jsonb_agg(feature)) FROM (SELECT jsonb_build_object('type','Feature','id',district,'geometry',ST_AsGeoJSON(st_transform(geom, 4326))::jsonb,'properties',to_jsonb(inputs) - 'geom') AS feature FROM (SELECT id, name as district, geom FROM public.il_senate_cb_2017_17_sldu_500k_cc) inputs) features;""".replace('\n',' ')
-
-        cur.execute(sen_query)
-        sengeoj = cur.fetchall()
-        sengeoj2 = sengeoj[0][0]
-        sengeoj3 = json.dumps(sengeoj2)
-        # senate district geojson
-        senate_gj = geojson.loads(sengeoj3)
-
-        ###############################
-        # query house table for geoJson
-        house_query = """SELECT jsonb_build_object('type','FeatureCollection','features', jsonb_agg(feature)) FROM (SELECT jsonb_build_object('type','Feature','id',district,'geometry',ST_AsGeoJSON(st_transform(geom, 4326))::jsonb,'properties',to_jsonb(inputs) - 'geom') AS feature FROM (SELECT id, name as district, geom FROM public.il_house_cb_2017_17_sldl_500k_cc) inputs) features;""".replace('\n',' ')
-
-        cur.execute(house_query)
-        hougeoj = cur.fetchall()
-        hougeoj2 = hougeoj[0][0]
-        hougeoj3 = json.dumps(hougeoj2)
-        # house district geojson
-        house_gj = geojson.loads(hougeoj3)
-
-# df for list of house districts to display on map
-house_df = json_normalize(hougeoj2['features'])
-house_df = pd.DataFrame(house_df.drop(columns=['geometry.coordinates', 'geometry.type', 'id', 'type']))
-house_df = house_df.rename(columns={'properties.district': 'district', 'properties.id': 'id'})
-hd_list = house_df.astype({'district': 'int32'}).sort_values('district')
-
-# df for list of commissioner districts to display on map
-commdist_df = json_normalize(geoj2['features'])
-commdist_df = pd.DataFrame(commdist_df.drop(columns=['geometry.coordinates', 'geometry.type']))
-commdist_df = commdist_df.rename(columns={'properties.district': 'district', 'properties.id': 'id'})
-cd_list = commdist_df.astype({'district': 'int32'}).sort_values('district')
-
-# df for list of senate districts to display on map
-senate_df = json_normalize(sengeoj2['features'])
-senate_df = pd.DataFrame(senate_df.drop(columns=['geometry.coordinates', 'geometry.type', 'id', 'type']))
-senate_df = senate_df.rename(columns={'properties.district': 'district', 'properties.id': 'id'})
-sd_list = senate_df.astype({'district': 'int32'}).sort_values('district')
-
-##############
-# for table
-df = pd.read_sql_query('select * from public.fpcc_capital_needs_non_mft_21_24',con=connection)
-df.set_index('id', inplace=True, drop=False)
-
-# close cursor
-connection.close()
-
+COMMISSIONER_DISTRICT_TABLE = 'public.commdistricts'
+SENATE_DISTRICT_TABLE = 'public.il_senate_cb_2017_17_sldu_500k_cc'
+HOUSE_DISTRICT_TABLE = 'public.il_house_cb_2017_17_sldl_500k_cc'
+DATATABLE = 'public.fpcc_capital_needs_non_mft_21_24'
 theme_colors = {
     'header': '#015249',
     'cell_color':'#535353',
@@ -98,8 +30,8 @@ theme_colors = {
     'table_background_color':'#e4e4e7'
     }
 
-#map setup
 def create_map(dataf, geoj):
+    """create map with a dataframe and geoJson then update layout"""
     # fig = go.Figure(
     #          go.Choroplethmapbox(
     #              geojson=geoj,
@@ -128,6 +60,100 @@ def create_map(dataf, geoj):
                      )
     fig.update_geos(fitbounds="locations")
     return fig
+
+def gj_query(table, district=None):
+    """queries senate, house, or commissioner district tables and returns json to build geojson"""
+    try:
+        conn_string=POSTGRESQL
+        connection=pg.connect(conn_string)
+        cur = connection.cursor()
+    except Exception as e :
+        print("[!] ",e)
+    else:
+        if district is None:
+            with connection:
+                with cur:
+                    # query table for ALL districts
+                    query = """SELECT jsonb_build_object('type','FeatureCollection','features', jsonb_agg(feature)) FROM (SELECT jsonb_build_object('type','Feature','id',district,'geometry',ST_AsGeoJSON(st_transform(geom, 4326))::jsonb,'properties',to_jsonb(inputs) - 'geom') AS feature FROM (SELECT id, district, geom FROM {}) inputs) features;""".format(table).replace('\n',' ')
+
+                    cur.execute(query)
+                    geoj = cur.fetchall()
+                    return geoj
+        else:
+            with connection:
+                with cur:
+                    # query table for specific districts
+                    query = """SELECT jsonb_build_object('type','FeatureCollection','features', jsonb_agg(feature)) FROM (SELECT jsonb_build_object('type','Feature','id',district,'geometry',ST_AsGeoJSON(st_transform(geom, 4326))::jsonb,'properties',to_jsonb(inputs) - 'geom') AS feature FROM (SELECT id, district, geom FROM {} where district in ('{}')) inputs) features;""".format(table, district).replace('\n',' ')
+
+                    cur.execute(query)
+                    geoj = cur.fetchall()
+                    return geoj
+    finally:
+        connection.close()
+
+def output_geojson(jsn):
+    """outputs a tuple from sql_query(), to get geojson for map ie. output_geojson()[0], or dict for the maps df ie. output_geojson()[1]."""
+    geoj = jsn[0][0]
+    geoj2 = json.dumps(geoj)
+    geoj3 = geojson.loads(geoj2)
+    return (geoj3, geoj)
+
+def table_query():
+    """sql query for DataTable"""
+    try:
+        conn_string=POSTGRESQL
+        connection=pg.connect(conn_string)
+        cur = connection.cursor()
+    except Exception as e :
+        print("[!] ",e)
+    else:
+        table_data = pd.read_sql_query('select * from {}'.format(DATATABLE),con=connection)
+        return table_data
+    finally:
+        connection.close()
+
+### create commissioner district geojson ###
+comm_dist_gj = output_geojson(gj_query(COMMISSIONER_DISTRICT_TABLE))[0]
+# geoj2 = gj[0][0]
+# geoj3 = json.dumps(geoj2)
+# comm_dist_gj = geojson.loads(geoj3)
+
+### query senate table for geoJson ###
+senate_gj = output_geojson(gj_query(SENATE_DISTRICT_TABLE))[0]
+# sengeoj2 = sen_query[0][0]
+# sengeoj3 = json.dumps(sengeoj2)
+# senate_gj = geojson.loads(sengeoj3)
+
+### query house table for geoJson ##
+house_gj = output_geojson(gj_query(HOUSE_DISTRICT_TABLE))[0]
+# hougeoj2 = house_query[0][0]
+# hougeoj3 = json.dumps(hougeoj2)
+# house_gj = geojson.loads(hougeoj3)
+
+# df for list of house districts to display on map
+house_df = json_normalize(output_geojson(gj_query(HOUSE_DISTRICT_TABLE))[1]['features'])
+house_df = pd.DataFrame(house_df.drop(columns=['geometry.coordinates', 'geometry.type', 'id', 'type']))
+house_df = house_df.rename(columns={'properties.district': 'district', 'properties.id': 'id'})
+hd_list = house_df.astype({'district': 'int32'}).sort_values('district')
+
+# df for list of commissioner districts to display on map
+commdist_df = json_normalize(output_geojson(gj_query(COMMISSIONER_DISTRICT_TABLE))[1]['features'])
+commdist_df = pd.DataFrame(commdist_df.drop(columns=['geometry.coordinates', 'geometry.type']))
+commdist_df = commdist_df.rename(columns={'properties.district': 'district', 'properties.id': 'id'})
+cd_list = commdist_df.astype({'district': 'int32'}).sort_values('district')
+
+# df for list of senate districts to display on map
+senate_df = json_normalize(output_geojson(gj_query(SENATE_DISTRICT_TABLE))[1]['features'])
+senate_df = pd.DataFrame(senate_df.drop(columns=['geometry.coordinates', 'geometry.type', 'id', 'type']))
+senate_df = senate_df.rename(columns={'properties.district': 'district', 'properties.id': 'id'})
+sd_list = senate_df.astype({'district': 'int32'}).sort_values('district')
+
+##############
+# for table
+table_df = table_query()
+table_df.set_index('id', inplace=True, drop=False)
+
+#map setup
 
 navbar = dbc.NavbarSimple(
     children=[
@@ -274,7 +300,7 @@ body = dbc.Container(
                                         ],
                                 merge_duplicate_headers=True,
                                 style_as_list_view=True,
-                                data=df.to_dict('records'),
+                                data=table_df.to_dict('records'),
                                 # fixed_rows={ 'headers': True, 'data': 0 },
                                 editable=False,
                                 filter_action="native",
