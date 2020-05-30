@@ -114,27 +114,12 @@ def table_query():
 
 ### create commissioner district geojson ###
 comm_dist_gj = output_geojson(gj_query(COMMISSIONER_DISTRICT_TABLE))[0]
-# geoj2 = gj[0][0]
-# geoj3 = json.dumps(geoj2)
-# comm_dist_gj = geojson.loads(geoj3)
 
 ### query senate table for geoJson ###
 senate_gj = output_geojson(gj_query(SENATE_DISTRICT_TABLE))[0]
-# sengeoj2 = sen_query[0][0]
-# sengeoj3 = json.dumps(sengeoj2)
-# senate_gj = geojson.loads(sengeoj3)
 
 ### query house table for geoJson ##
 house_gj = output_geojson(gj_query(HOUSE_DISTRICT_TABLE))[0]
-# hougeoj2 = house_query[0][0]
-# hougeoj3 = json.dumps(hougeoj2)
-# house_gj = geojson.loads(hougeoj3)
-
-# df for list of house districts to display on map
-house_df = json_normalize(output_geojson(gj_query(HOUSE_DISTRICT_TABLE))[1]['features'])
-house_df = pd.DataFrame(house_df.drop(columns=['geometry.coordinates', 'geometry.type', 'id', 'type']))
-house_df = house_df.rename(columns={'properties.district': 'district', 'properties.id': 'id'})
-hd_list = house_df.astype({'district': 'int32'}).sort_values('district')
 
 # df for list of commissioner districts to display on map
 commdist_df = json_normalize(output_geojson(gj_query(COMMISSIONER_DISTRICT_TABLE))[1]['features'])
@@ -148,12 +133,16 @@ senate_df = pd.DataFrame(senate_df.drop(columns=['geometry.coordinates', 'geomet
 senate_df = senate_df.rename(columns={'properties.district': 'district', 'properties.id': 'id'})
 sd_list = senate_df.astype({'district': 'int32'}).sort_values('district')
 
+# df for list of house districts to display on map
+house_df = json_normalize(output_geojson(gj_query(HOUSE_DISTRICT_TABLE))[1]['features'])
+house_df = pd.DataFrame(house_df.drop(columns=['geometry.coordinates', 'geometry.type', 'id', 'type']))
+house_df = house_df.rename(columns={'properties.district': 'district', 'properties.id': 'id'})
+hd_list = house_df.astype({'district': 'int32'}).sort_values('district')
+
 ##############
 # for table
 table_df = table_query()
 table_df.set_index('id', inplace=True, drop=False)
-
-#map setup
 
 navbar = dbc.NavbarSimple(
     children=[
@@ -229,7 +218,7 @@ body = dbc.Container(
                             dbc.Spinner(color="primary", size='lg',
                                 children=[dcc.Graph(
                                                 id = 'senate_map',
-                                                figure = create_map(senate_df, senate_gj)
+                                                #figure = create_map(senate_df, senate_gj)
                                                     )
                                         ]),
                             ]),md=4, className="d-none d-sm-block" #removes map on small devices
@@ -239,7 +228,7 @@ body = dbc.Container(
                             dbc.Spinner(color="primary", size="lg",
                                 children=[dcc.Graph(
                                                 id = 'house_map',
-                                                figure = create_map(house_df, house_gj)
+                                                #figure = create_map(house_df, house_gj)
                                                 )
                                         ]),
                             ]),md=4, className="d-none d-sm-block" #removes map on small devices
@@ -249,7 +238,7 @@ body = dbc.Container(
                              dbc.Spinner(color="primary", size='lg',
                                  children=[dcc.Graph(
                                                  id = 'commdist_map',
-                                                 figure = create_map(commdist_df, comm_dist_gj)
+                                                 # figure = create_map(commdist_df, comm_dist_gj)
                                                  )
                                          ]),
                              ]),md=4, className="d-none d-sm-block" #removes map on small devices
