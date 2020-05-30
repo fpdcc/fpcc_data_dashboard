@@ -24,6 +24,12 @@ conn_string=POSTGRESQL
 connection=pg.connect(conn_string)
 cur = connection.cursor()
 
+theme_colors = {
+    'header': '#015249',
+    'cell_color':'#535353',
+    'table_header_color':'#A5A5AF',
+    'table_background_color':'#e4e4e7'
+    }
 
 navbar = dbc.NavbarSimple(
     children=[
@@ -59,6 +65,8 @@ body = dbc.Container(
             id="tabs",
             active_tab="home",
             className="nav nav-pills nav-fill mt-3",
+            # style={"color": "#00AEF9"}, inactive tabe font color
+            # style={"background-color": "#00AEF9"}, tab background color
         ),
         html.Div(id="content"),
         ]),

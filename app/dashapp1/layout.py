@@ -8,6 +8,7 @@ import dash_table
 import dash_table.FormatTemplate as FormatTemplate
 import pandas as pd
 import pandas.io.sql as psql
+from pandas.io.json import json_normalize
 import plotly.express as px
 import psycopg2 as pg
 import numpy as np
@@ -44,7 +45,7 @@ with connection:
 
         ################################
         # query senate table for geoJson
-        sen_query = sen_query = """SELECT jsonb_build_object('type','FeatureCollection','features', jsonb_agg(feature)) FROM (SELECT jsonb_build_object('type','Feature','id',name,'geometry',ST_AsGeoJSON(st_transform(geom, 4326))::jsonb,'properties',to_jsonb(inputs) - 'name' - 'geom' - 'ogc_fid' - 'lsy' - 'awater' - 'aland' - 'lsad' - 'district' - 'district_1' - 'geoid' - 'sldust' - 'statefp' - 'affgeoid') AS feature FROM (SELECT * FROM public.il_senate_cb_2017_17_sldu_500k_cc) inputs) features;""".replace('\n',' ')
+        sen_query = sen_query = """SELECT jsonb_build_object('type','FeatureCollection','features', jsonb_agg(feature)) FROM (SELECT jsonb_build_object('type','Feature','id',district,'geometry',ST_AsGeoJSON(st_transform(geom, 4326))::jsonb,'properties',to_jsonb(inputs) - 'geom') AS feature FROM (SELECT id, name as district, geom FROM public.il_senate_cb_2017_17_sldu_500k_cc) inputs) features;""".replace('\n',' ')
 
         cur.execute(sen_query)
         sengeoj = cur.fetchall()
@@ -55,18 +56,7 @@ with connection:
 
         ###############################
         # query house table for geoJson
-        house_query = """SELECT jsonb_build_object(
-        'type','FeatureCollection',
-        'features', jsonb_agg(feature)
-        )
-        FROM (
-        SELECT jsonb_build_object(
-        'type','Feature',
-        'id', name,
-        'geometry', ST_AsGeoJSON(st_transform(geom, 4326))::jsonb,
-        'properties', to_jsonb(inputs) - 'geom'
-        ) AS feature
-        FROM (SELECT * FROM public.il_house_cb_2017_17_sldl_500k_cc) inputs) features;""".replace('\n',' ')
+        house_query = """SELECT jsonb_build_object('type','FeatureCollection','features', jsonb_agg(feature)) FROM (SELECT jsonb_build_object('type','Feature','id',district,'geometry',ST_AsGeoJSON(st_transform(geom, 4326))::jsonb,'properties',to_jsonb(inputs) - 'geom') AS feature FROM (SELECT id, name as district, geom FROM public.il_house_cb_2017_17_sldl_500k_cc) inputs) features;""".replace('\n',' ')
 
         cur.execute(house_query)
         hougeoj = cur.fetchall()
@@ -76,18 +66,21 @@ with connection:
         house_gj = geojson.loads(hougeoj3)
 
 # df for list of house districts to display on map
-house_df = pd.read_sql_query('select id, name as district, st_astext(st_transform(geom,4326),10) as geom from public.il_house_cb_2017_17_sldl_500k_cc',con=connection)
-house_df = pd.DataFrame(house_df.drop(columns='geom'))
+house_df = json_normalize(hougeoj2['features'])
+house_df = pd.DataFrame(house_df.drop(columns=['geometry.coordinates', 'geometry.type', 'id', 'type']))
+house_df = house_df.rename(columns={'properties.district': 'district', 'properties.id': 'id'})
 hd_list = house_df.astype({'district': 'int32'}).sort_values('district')
 
 # df for list of commissioner districts to display on map
-commdist_df = pd.read_sql_query('select ogc_fid as id, district, st_astext(st_transform(geom,4326),10) as geom from public.commdistricts',con=connection)
-commdist_df = pd.DataFrame(commdist_df.drop(columns='geom'))
+commdist_df = json_normalize(geoj2['features'])
+commdist_df = pd.DataFrame(commdist_df.drop(columns=['geometry.coordinates', 'geometry.type']))
+commdist_df = commdist_df.rename(columns={'properties.district': 'district', 'properties.id': 'id'})
 cd_list = commdist_df.astype({'district': 'int32'}).sort_values('district')
 
 # df for list of senate districts to display on map
-senate_df = pd.read_sql_query('select id, name as district, st_astext(st_transform(geom,4326),10) as geom from public.il_senate_cb_2017_17_sldu_500k_cc',con=connection)
-senate_df = pd.DataFrame(senate_df.drop(columns='geom'))
+senate_df = json_normalize(sengeoj2['features'])
+senate_df = pd.DataFrame(senate_df.drop(columns=['geometry.coordinates', 'geometry.type', 'id', 'type']))
+senate_df = senate_df.rename(columns={'properties.district': 'district', 'properties.id': 'id'})
 sd_list = senate_df.astype({'district': 'int32'}).sort_values('district')
 
 ##############
@@ -98,7 +91,12 @@ df.set_index('id', inplace=True, drop=False)
 # close cursor
 connection.close()
 
-theme_colors = []
+theme_colors = {
+    'header': '#015249',
+    'cell_color':'#535353',
+    'table_header_color':'#A5A5AF',
+    'table_background_color':'#e4e4e7'
+    }
 
 #map setup
 def create_map(dataf, geoj):
@@ -139,7 +137,7 @@ navbar = dbc.NavbarSimple(
                 dbc.DropdownMenuItem("Data Sets", header=True),
                 dbc.DropdownMenuItem("Trails", href="#"),
                 dbc.DropdownMenuItem("Parking Lots", href="#"),
-                dbc.DropdownMenuItem("Picnic Groves", href="#"),
+                dbc.DropdownMenuItem("Buildings", href="#"),
             ],
             nav=True,
             in_navbar=True,
@@ -148,7 +146,7 @@ navbar = dbc.NavbarSimple(
     ],
     brand="FPCC Data",
     brand_href="#",
-    color="#015249",
+    color=theme_colors['header'],
     dark=True,
 )
 
@@ -295,7 +293,7 @@ body = dbc.Container(
                                     #'minWidth': '55px',
                                     'maxWidth': '400px',
                                     'whiteSpace': 'normal',
-                                    'color': '#535353'
+                                    'color': theme_colors['cell_color']
                                     },
                                 style_data={
                                     'whiteSpace': 'normal',
@@ -305,7 +303,7 @@ body = dbc.Container(
                                 style_data_conditional=[
                                         {
                                             'if': {'row_index': 'odd'},
-                                            'backgroundColor': '#e4e4e7'
+                                            'backgroundColor': theme_colors['table_background_color']
                                         }
                                     ],
                                 #style_table={'maxHeight': '300px','overflowY': 'scroll'},
@@ -319,14 +317,14 @@ body = dbc.Container(
                                     'textAlign': 'center',
                                     'fontWeight': 'bold',
                                     'color': 'white',
-                                    'backgroundColor': '#A5A5AF'
+                                    'backgroundColor': theme_colors['table_header_color']
                                     },
                             ),
                         ), id='div_table',
                     ),
             ],id='row_table'),
 
-        # dbc.Row(dbc.Col(html.Div(str(new_comm_dist)),style={'height': '100px', 'width': 'auto', 'color': 'green'}))
+        dbc.Row(dbc.Col(html.Div(),style={'height': '100px', 'width': 'auto', 'background-color': theme_colors['header']}))
 
 ],fluid=True)
 
