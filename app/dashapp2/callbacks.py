@@ -25,6 +25,10 @@ def register_callbacks(dashapp):
                     "Last Name": ["Dent", "Prefect", "Beeblebrox", "Astra"],
                         }
                     )
+
+            data = px.data.gapminder()
+            data_canada = data[data.country == 'Canada']
+
             home_tab_content = [
                 html.Div(
                     dbc.Row(
@@ -60,7 +64,26 @@ def register_callbacks(dashapp):
                                 ),md=6,
                             ),
                         ], justify='center'),
-                    
+
+                    dbc.Row(
+                        dbc.Col(
+                            html.Div(
+                                dcc.Graph(
+                                    figure = px.bar(
+                                        data_canada,
+                                        x='year',
+                                        y='pop',
+                                        hover_data=['lifeExp', 'gdpPercap'], color='lifeExp',
+                                        labels={'pop':'population of Canada'},
+                                        )
+                                    )
+                                )
+                            )
+                        ),
+
+                    dbc.Row(dbc.Col(html.Div(),style={'height': '100px', 'width': 'auto', 'background-color': theme_colors['header']})),
+
+
                 ]
             return home_tab_content
 
