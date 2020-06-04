@@ -176,7 +176,7 @@ def register_callbacks(dashapp):
                                         placeholder="Zone",
                                         #options=[{'label':ns, 'value':ns} for ns in sd_list['district']],
                                         multi=True
-                                        ),className="my-2"
+                                        ),className="my-4"
                                     ),md=3
                                 ),
                             dbc.Col(
@@ -187,7 +187,7 @@ def register_callbacks(dashapp):
                                         placeholder="Commissioner District",
                                         #options=[{'label':ns, 'value':ns} for ns in hd_list['district']],
                                         multi=True
-                                        ),className="my-2"
+                                        ),className="my-4"
                                     ),md=3
                                 ),
                             dbc.Col(
@@ -198,7 +198,7 @@ def register_callbacks(dashapp):
                                         placeholder="Year Built",
                                         #options=[{'label':ns, 'value':ns} for ns in cd_list['district']],
                                         multi=True
-                                        ),className="my-2"
+                                        ),className="my-4"
                                     ),md=3
                                 ),
                             dbc.Col(
@@ -209,7 +209,7 @@ def register_callbacks(dashapp):
                                         placeholder="Priority",
                                         #options=[{'label':ns, 'value':ns} for ns in cd_list['district']],
                                         multi=True
-                                        ),className="my-2"
+                                        ),className="my-4"
                                     ),md=3
                              ),
 
@@ -305,4 +305,101 @@ def register_callbacks(dashapp):
             return general_tab_content
 
         elif at == "details":
-            return "details content"
+            card_content_bldg_detail = [
+                dbc.CardHeader("Card header"),
+                dbc.CardBody([
+                        html.H5("Card title", className="card-title"),
+                        html.P(
+                            "This is some card content that we'll reuse.This is some card content that we'll reuse.This is some card content that we'll reuse.This is some card content that we'll reuse.This is some card content that we'll reuse.This is some card content that we'll reuse.This is some card content that we'll reuse.This is some card content that we'll reuse.This is some card content that we'll reuse.This is some card content that we'll reuse.This is some card content that we'll reuse.This is some card content that we'll reuse.This is some card content that we'll reuse.",
+                            className="card-text",
+                        ),
+                    ]),
+            ]
+
+            card_content_bldg_docs = [
+                dbc.Card([
+                    dbc.CardHeader("Card header"),
+                    dbc.CardImg(src="https://fpdccfilestore.nyc3.digitaloceanspaces.com/danryan_visitorcenter.jpg", top=True),
+                    dbc.CardBody([
+                            html.H5("Card title", className="card-title"),
+                            html.P(
+                                "This is some card content that we'll reuse.This is some card content that we'll reuse.",
+                                className="card-text",
+                                ),
+                            dbc.CardLink("Card link", href="#"),
+                            dbc.CardLink("External link", href="https://google.com"),
+                        ]),
+                    ]),
+            ]
+
+
+            details_tab_content = [
+    # Row for dropdown menus
+            dbc.Row([
+                    dbc.Col(
+                        html.Div(
+                            dcc.Dropdown(
+                                id='zone',
+                                value = 0,
+                                placeholder="Zone",
+                                #options=[{'label':ns, 'value':ns} for ns in sd_list['district']],
+                                multi=True
+                                ),className="my-4"
+                            ),md=3
+                        ),
+                    dbc.Col(
+                        html.Div(
+                            dcc.Dropdown(
+                                id='comm_dist',
+                                value = 0,
+                                placeholder="Commissioner District",
+                                #options=[{'label':ns, 'value':ns} for ns in hd_list['district']],
+                                multi=True
+                                ),className="my-4"
+                            ),md=3
+                        ),
+                    dbc.Col(
+                        html.Div(
+                            dcc.Dropdown(
+                                id='year_built',
+                                value = 0,
+                                placeholder="Year Built",
+                                #options=[{'label':ns, 'value':ns} for ns in cd_list['district']],
+                                multi=True
+                                ),className="my-4"
+                            ),md=3
+                        ),
+                    dbc.Col(
+                        html.Div(
+                            dcc.Dropdown(
+                                id='priority',
+                                value = 0,
+                                placeholder="Priority",
+                                #options=[{'label':ns, 'value':ns} for ns in cd_list['district']],
+                                multi=True
+                                ),className="my-4"
+                            ),md=3
+                     ),
+
+                ], justify='center', id='filter_bldgdetail_dropdowns'),
+# Row for build select
+            dbc.Row([
+                dbc.Col(
+                    html.Div(
+                        dcc.Dropdown(
+                            id='building_name',
+                            value = 0,
+                            placeholder="Building Name",
+                            #options=[{'label':ns, 'value':ns} for ns in sd_list['district']],
+                            multi=True
+                            ),className="my-4"
+                        ),md=12
+                    ),
+                ], justify='center', id='filter_bldgselect_dropdown'),
+# building detail cards
+            dbc.Row([
+                    dbc.Col(dbc.Card(card_content_bldg_detail, color="light")),
+                    dbc.Col(card_content_bldg_docs),
+                ]),
+            ]
+            return details_tab_content
