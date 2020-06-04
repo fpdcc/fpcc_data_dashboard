@@ -32,18 +32,6 @@ theme_colors = {
 
 def create_map(dataf, geoj):
     """create map with a dataframe and geoJson then update layout"""
-    # fig = go.Figure(
-    #          go.Choroplethmapbox(
-    #              geojson=geoj,
-    #              locations=dataf.district,
-    #              z=dataf.district,
-    #              featureidkey="properties.district",
-    #              colorscale="Viridis",
-    #              zmin=0,
-    #              zmax=12,
-    #              marker_opacity=0.5,
-    #              marker_line_width=0))
-
     fig = px.choropleth_mapbox(dataf,
                                 geojson=geoj,
                                 locations="district",
@@ -64,8 +52,8 @@ def create_map(dataf, geoj):
 def gj_query(table, district=None):
     """queries senate, house, or commissioner district tables and returns json to build geojson"""
     try:
-        conn_string=POSTGRESQL
-        connection=pg.connect(conn_string)
+        conn_string = POSTGRESQL
+        connection = pg.connect(conn_string)
         cur = connection.cursor()
     except Exception as e :
         print("[!] ",e)
@@ -92,7 +80,9 @@ def gj_query(table, district=None):
         connection.close()
 
 def output_geojson(jsn):
-    """outputs a tuple from sql_query(), to get geojson for map ie. output_geojson()[0], or dict for the maps df ie. output_geojson()[1]."""
+    """outputs a tuple from gj_query().
+    To get geojson for map use output_geojson()[0],
+    To get dict for the map df use output_geojson()[1]."""
     geoj = jsn[0][0]
     geoj2 = json.dumps(geoj)
     geoj3 = geojson.loads(geoj2)
@@ -339,6 +329,7 @@ body = dbc.Container(
                     ),
             ],id='row_table'),
 
+# footer
         dbc.Row(dbc.Col(html.Div(),style={'height': '100px', 'width': 'auto', 'background-color': theme_colors['header']}))
 
 ],fluid=True)

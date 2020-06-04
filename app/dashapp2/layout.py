@@ -8,12 +8,14 @@ import dash_table
 import dash_table.FormatTemplate as FormatTemplate
 import pandas as pd
 import pandas.io.sql as psql
+from pandas.io.json import json_normalize
 import plotly.express as px
 import psycopg2 as pg
 import numpy as np
 import json
 import geojson
 from pathlib import Path
+
 
 basedir = Path(os.path.abspath(os.path.dirname(__file__))).parent
 datadir = Path(basedir / 'assets')
