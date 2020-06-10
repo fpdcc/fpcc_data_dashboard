@@ -153,20 +153,22 @@ def register_callbacks(dashapp):
                 ]
             return home_tab_content
 
+
+
         elif at == "general":
-            # building geojson
+# building geojson
             building_gj = output_geojson(gj_query(BUILDINGS_GEODATA)[0])[0]
 
-            # building dataframe
+# building dataframe
             building_df = json_normalize(output_geojson(gj_query(BUILDINGS_GEODATA)[0])[1]['features'])
             building_df = pd.DataFrame(building_df.drop(columns=['geometry.coordinates', 'geometry.type', 'type']))
             building_df = building_df.rename(columns={'properties.buildings_id': 'buildings_id'})
 
-            # DataTable
+# DataTable
             building_table_df = table_query(BUILDINGS_GEODATA)
 
             general_tab_content = [
-            # Row for dropdown menus
+# Row for dropdown menus
                     dbc.Row([
                             dbc.Col(
                                 html.Div(
@@ -214,7 +216,7 @@ def register_callbacks(dashapp):
                              ),
 
                         ], justify='center', id='filter_bldg_dropdowns'),
-            # Row for map
+# Row for map
                     dbc.Row([
                            dbc.Col(
                                html.Div([
@@ -228,7 +230,7 @@ def register_callbacks(dashapp):
                                        ]),
                                ),
                         ]),
-            # Data table
+# Data table
                     dbc.Row([
                         dbc.Col(
                             html.Div(
@@ -298,13 +300,16 @@ def register_callbacks(dashapp):
                                     ), id='div_bldgtable',
                                 )
                             ],id='row_bldgtable'),
-            # footer
+# footer
                     dbc.Row(dbc.Col(html.Div(),style={'height': '100px', 'width': 'auto', 'background-color': theme_colors['header']})),
             ]
 
             return general_tab_content
 
         elif at == "details":
+            # DataTable
+            building_table_df = table_query(BUILDINGS_GEODATA)
+
             card_content_bldg_detail = [
                 dbc.CardHeader("Card header"),
                 dbc.CardBody([
@@ -334,7 +339,7 @@ def register_callbacks(dashapp):
 
 
             details_tab_content = [
-    # Row for dropdown menus
+# Row for dropdown menus
             dbc.Row([
                     dbc.Col(
                         html.Div(
@@ -398,8 +403,80 @@ def register_callbacks(dashapp):
                 ], justify='center', id='filter_bldgselect_dropdown'),
 # building detail cards
             dbc.Row([
-                    dbc.Col(dbc.Card(card_content_bldg_detail, color="light")),
-                    dbc.Col(card_content_bldg_docs),
+                    dbc.Col(html.Div(dbc.Card(card_content_bldg_detail, color="light"))),
+                    dbc.Col(html.Div(card_content_bldg_docs),className="mb-4"),
                 ]),
+# Data table
+        dbc.Row([
+            dbc.Col(
+                html.Div(
+                    dash_table.DataTable(
+                                id='building-table',
+                                export_format='xlsx',
+                                data=building_table_df.to_dict('records'),
+                                columns=[
+                                        {"name": "Buildings Id",
+                                        "id": "buildings_id"},
+                                        {"name": "Building Name",
+                                        "id": "building_name"},
+                                        {"name": "Current Address",
+                                        "id": "address_current"},
+                                        {"name": "Building Type",
+                                        "id": "building_type"},
+                                        {"name": "Improvement Year",
+                                        "id": "improvement_year"},
+                                        ],
+                                merge_duplicate_headers=True,
+                                style_as_list_view=True,
+                                # fixed_rows={ 'headers': True, 'data': 0 },
+                                editable=False,
+                                filter_action="native",
+                                sort_action="native",
+                                sort_mode='multi',
+                                row_selectable='multi',
+                                row_deletable=False,
+                                selected_rows=[],
+                                page_action='native',
+                                page_current= 0,
+                                page_size= 10,
+                                style_cell={
+                                    'textAlign': 'left',
+                                    'padding': '5px',
+                                    'height': 'auto',
+                                    #'minWidth': '55px',
+                                    'maxWidth': '100px',
+                                    'whiteSpace': 'normal',
+                                    'color': theme_colors['cell_color']
+                                    },
+                                style_data={
+                                    'whiteSpace': 'normal',
+                                    'height': 'auto',
+                                    'lineHeight': '17px'
+                                    },
+                                style_data_conditional=[
+                                        {
+                                            'if': {'row_index': 'odd'},
+                                            'backgroundColor': theme_colors['table_background_color']
+                                        }
+                                    ],
+                                #style_table={'maxHeight': '300px','overflowY': 'scroll'},
+                                # style_cell_conditional=[
+                                #     {
+                                #         'if': {'column_id': c},
+                                #         'textAlign': 'center'
+                                #     } for c in ['house_district', 'senate_district', 'commissioner_district']
+                                #     ],
+                                style_header={
+                                    'textAlign': 'center',
+                                    'fontWeight': 'bold',
+                                    'color': 'white',
+                                    'backgroundColor': theme_colors['table_header_color']
+                                    },
+                            ),
+                        ), id='div_bldgdetail_table',
+                    )
+                ],id='row_bldg_detail_table'),
+# footer
+            dbc.Row(dbc.Col(html.Div(),style={'height': '100px', 'width': 'auto', 'background-color': theme_colors['header']})),
             ]
             return details_tab_content
