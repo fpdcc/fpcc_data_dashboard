@@ -73,7 +73,7 @@ def bldg_proj_query(table):
     except Exception as e :
         print("[!] ",e)
     else:
-        table_data = pd.read_sql_query("select * from {}".format(table),con=connection)
+        table_data = pd.read_sql_query("select * from {} where complete = 0".format(table),con=connection)
         return table_data
     finally:
         connection.close()
@@ -81,24 +81,28 @@ def bldg_proj_query(table):
 BUILDINGS_GEODATA = 'quercus.buildings'
 BUILDINGS_PROJECTS = 'catalpa.building_projects'
 
+bldg_proj_df = bldg_proj_query(BUILDINGS_PROJECTS)
+
 ### home tab ###
-priority_card_content = [
-    dbc.CardBody(
-        [
-            html.H5("Card title", className="card-title"),
-            html.P(
-                "This is some card content that we'll reuse",
-                className="card-text",
+def summary_card_content(df):
+    """return summary for all uncompleted priority classes"""
+    priority_class = list(df.groupby(['priority_class']).groups.keys())
+    for p in priority_class:
+        total_projects = len(df.groupby(['priority_class']).groups[p])
+        priority_card_content = [
+            dbc.CardBody(
+                [
+                    html.H5("Priority Class {}", className="card-title"),
+                    html.P("Total Projects: {}",className="card-text",),
+                ]
             ),
-        ]
-    ),
-]
+        ].format(p, total_projects)
+        return priority_card_content
 
 df = pd.DataFrame(
             {
-        "Project ID": [1, 2, 3, 4],
-        "Location": ["Miller Meadow", "Dan Ryan", "Sand Ridge", "Bunker Hill"],
-        "Building Name": ["Building 1", "Building 2", "Building 3", "Building 4"],
+        "First Name": ["Arthur", "Ford", "Zaphod", "Trillian"],
+        "Last Name": ["Dent", "Prefect", "Beeblebrox", "Astra"],
             }
         )
 
@@ -147,7 +151,9 @@ card_content_bldg_docs = [
 
 
 def register_callbacks(dashapp):
-    @dashapp.callback(Output("content", "children"), [Input("tabs", "active_tab")])
+    @dashapp.callback(
+        Output("content", "children"),
+        [Input("tabs", "active_tab")])
     def switch_tab(at):
         if at == "home":
 
@@ -156,51 +162,17 @@ def register_callbacks(dashapp):
                 # cards
                     dbc.Row(
                         [
-                            dbc.Col(dbc.Card(dbc.CardBody(
-                                    [
-                                        html.H5("Priority Class 1", className="card-title"),
-                                        html.P(
-                                            "Total projects: 18 | Total Cost:999",
-                                            className="card-text",
-                                        ),
-                                    ]
-                                ), color="primary", inverse=True)),
-                            dbc.Col(dbc.Card(dbc.CardBody(
-                                    [
-                                        html.H5("Priority Class 2", className="card-title"),
-                                        html.P(
-                                            "Total projects: 290 | Total Cost:999",
-                                            className="card-text",
-                                        ),
-                                    ]
-                                ), color="primary", inverse=True)),
-                            dbc.Col(dbc.Card(dbc.CardBody(
-                                    [
-                                        html.H5("Priority Class 3", className="card-title"),
-                                        html.P(
-                                            "Total projects: 999 | Total Cost:999",
-                                            className="card-text",
-                                        ),
-                                    ]
-                                ), color="info", inverse=True)),
-                            dbc.Col(dbc.Card(dbc.CardBody(
-                                    [
-                                        html.H5("Priority Class 4", className="card-title"),
-                                        html.P(
-                                            "Total projects: 283 | Total Cost:999",
-                                            className="card-text",
-                                        ),
-                                    ]
-                                ), color="info", inverse=True)),
+                            dbc.Col(dbc.Card(priority_card_content, color="primary", inverse=True, id='priority1')),
+                            dbc.Col(dbc.Card(priority_card_content, color="secondary", inverse=True, id='priority2')),
+                            dbc.Col(dbc.Card(priority_card_content, color="info", inverse=True, id='priority3')),
                         ],
-                        className="my-4",
+                        className="mb-4 mt-4",
                             ),
                         ),
                 # tables
                     dbc.Row([
                         dbc.Col(
-                            html.Div([
-                                html.H4(children="Buildings Above Replacement Cost"),
+                            html.Div(
                                 dbc.Table.from_dataframe(
                                     df,
                                     bordered=True,
@@ -208,11 +180,10 @@ def register_callbacks(dashapp):
                                     hover=True,
                                     responsive=True,
                                     striped=True,)
-                                ]),md=6,
+                                ),md=6,
                             ),
                         dbc.Col(
-                            html.Div([
-                                html.H4(children="Building Asset End of Useful Life"),
+                            html.Div(
                                 dbc.Table.from_dataframe(
                                     df,
                                     bordered=True,
@@ -220,7 +191,7 @@ def register_callbacks(dashapp):
                                     hover=True,
                                     responsive=True,
                                     striped=True,)
-                                ]),md=6,
+                                ),md=6,
                             ),
                         ], justify='center'),
                 # bar graph
