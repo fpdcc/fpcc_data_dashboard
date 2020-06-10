@@ -24,3 +24,5 @@ flask run
 ```
 
 open in browser
+
+This dashboard is based on work done by [okomarov](https://github.com/okomarov/dash_on_flask)

@@ -2,8 +2,6 @@ from dash.dependencies import Input
 from dash.dependencies import Output
 from .layout import *
 
-BUILDINGS_GEODATA = 'quercus.buildings'
-
 def gj_query(table):
     """queries tables and returns json to build geojson"""
     try:
@@ -66,43 +64,103 @@ def table_query(table):
     finally:
         connection.close()
 
+def bldg_proj_query(table):
+    """sql query for DataTable"""
+    try:
+        conn_string=POSTGRESQL
+        connection=pg.connect(conn_string)
+        cur = connection.cursor()
+    except Exception as e :
+        print("[!] ",e)
+    else:
+        table_data = pd.read_sql_query("select * from {}".format(table),con=connection)
+        return table_data
+    finally:
+        connection.close()
+
+BUILDINGS_GEODATA = 'quercus.buildings'
+BUILDINGS_PROJECTS = 'catalpa.building_projects'
+
+### home tab ###
+priority_card_content = [
+    dbc.CardBody(
+        [
+            html.H5("Card title", className="card-title"),
+            html.P(
+                "This is some card content that we'll reuse",
+                className="card-text",
+            ),
+        ]
+    ),
+]
+
+df = pd.DataFrame(
+            {
+        "First Name": ["Arthur", "Ford", "Zaphod", "Trillian"],
+        "Last Name": ["Dent", "Prefect", "Beeblebrox", "Astra"],
+            }
+        )
+
+data = px.data.gapminder()
+data_canada = data[data.country == 'Canada']
+
+### general tab ###
+# DataTable
+building_table_df = table_query(BUILDINGS_GEODATA)
+
+# building geojson
+building_gj = output_geojson(gj_query(BUILDINGS_GEODATA)[0])[0]
+
+# building dataframe
+building_df = json_normalize(output_geojson(gj_query(BUILDINGS_GEODATA)[0])[1]['features'])
+building_df = pd.DataFrame(building_df.drop(columns=['geometry.coordinates', 'geometry.type', 'type']))
+building_df = building_df.rename(columns={'properties.buildings_id': 'buildings_id'})
+
+### details tab ###
+card_content_bldg_detail = [
+    dbc.CardHeader("Card header"),
+    dbc.CardBody([
+            html.H5("Card title", className="card-title"),
+            html.P(
+                "This is some card content that we'll reuse.This is some card content that we'll reuse.This is some card content that we'll reuse.This is some card content that we'll reuse.This is some card content that we'll reuse.This is some card content that we'll reuse.This is some card content that we'll reuse.This is some card content that we'll reuse.This is some card content that we'll reuse.This is some card content that we'll reuse.This is some card content that we'll reuse.This is some card content that we'll reuse.This is some card content that we'll reuse.",
+                className="card-text",
+            ),
+        ]),
+]
+
+card_content_bldg_docs = [
+    dbc.Card([
+        dbc.CardHeader("Card header"),
+        dbc.CardImg(src="https://fpdccfilestore.nyc3.digitaloceanspaces.com/danryan_visitorcenter.jpg", top=True),
+        dbc.CardBody([
+                html.H5("Card title", className="card-title"),
+                html.P(
+                    "This is some card content that we'll reuse.This is some card content that we'll reuse.",
+                    className="card-text",
+                    ),
+                dbc.CardLink("Card link", href="#"),
+                dbc.CardLink("External link", href="https://google.com"),
+            ]),
+        ]),
+]
+
+
 def register_callbacks(dashapp):
     @dashapp.callback(Output("content", "children"), [Input("tabs", "active_tab")])
     def switch_tab(at):
         if at == "home":
-            card_content = [
-                dbc.CardHeader("Card header"),
-                dbc.CardBody(
-                    [
-                        html.H5("Card title", className="card-title"),
-                        html.P(
-                            "This is some card content that we'll reuse",
-                            className="card-text",
-                        ),
-                    ]
-                ),
-            ]
-
-            df = pd.DataFrame(
-                        {
-                    "First Name": ["Arthur", "Ford", "Zaphod", "Trillian"],
-                    "Last Name": ["Dent", "Prefect", "Beeblebrox", "Astra"],
-                        }
-                    )
-
-            data = px.data.gapminder()
-            data_canada = data[data.country == 'Canada']
 
             home_tab_content = [
                 html.Div(
                 # cards
                     dbc.Row(
                         [
-                            dbc.Col(dbc.Card(card_content, color="primary", inverse=True)),
-                            dbc.Col(dbc.Card(card_content, color="secondary", inverse=True)),
-                            dbc.Col(dbc.Card(card_content, color="info", inverse=True)),
+                            dbc.Col(dbc.Card(priority_card_content, color="primary", inverse=True)),
+                            dbc.Col(dbc.Card(priority_card_content, color="secondary", inverse=True)),
+                            dbc.Col(dbc.Card(priority_card_content, color="info", inverse=True)),
+                            dbc.Col(dbc.Card(priority_card_content, color="info", inverse=True)),
                         ],
-                        className="mb-4 mt-4",
+                        className="my-4",
                             ),
                         ),
                 # tables
@@ -155,17 +213,8 @@ def register_callbacks(dashapp):
 
 
 
+
         elif at == "general":
-# building geojson
-            building_gj = output_geojson(gj_query(BUILDINGS_GEODATA)[0])[0]
-
-# building dataframe
-            building_df = json_normalize(output_geojson(gj_query(BUILDINGS_GEODATA)[0])[1]['features'])
-            building_df = pd.DataFrame(building_df.drop(columns=['geometry.coordinates', 'geometry.type', 'type']))
-            building_df = building_df.rename(columns={'properties.buildings_id': 'buildings_id'})
-
-# DataTable
-            building_table_df = table_query(BUILDINGS_GEODATA)
 
             general_tab_content = [
 # Row for dropdown menus
@@ -307,35 +356,6 @@ def register_callbacks(dashapp):
             return general_tab_content
 
         elif at == "details":
-            # DataTable
-            building_table_df = table_query(BUILDINGS_GEODATA)
-
-            card_content_bldg_detail = [
-                dbc.CardHeader("Card header"),
-                dbc.CardBody([
-                        html.H5("Card title", className="card-title"),
-                        html.P(
-                            "This is some card content that we'll reuse.This is some card content that we'll reuse.This is some card content that we'll reuse.This is some card content that we'll reuse.This is some card content that we'll reuse.This is some card content that we'll reuse.This is some card content that we'll reuse.This is some card content that we'll reuse.This is some card content that we'll reuse.This is some card content that we'll reuse.This is some card content that we'll reuse.This is some card content that we'll reuse.This is some card content that we'll reuse.",
-                            className="card-text",
-                        ),
-                    ]),
-            ]
-
-            card_content_bldg_docs = [
-                dbc.Card([
-                    dbc.CardHeader("Card header"),
-                    dbc.CardImg(src="https://fpdccfilestore.nyc3.digitaloceanspaces.com/danryan_visitorcenter.jpg", top=True),
-                    dbc.CardBody([
-                            html.H5("Card title", className="card-title"),
-                            html.P(
-                                "This is some card content that we'll reuse.This is some card content that we'll reuse.",
-                                className="card-text",
-                                ),
-                            dbc.CardLink("Card link", href="#"),
-                            dbc.CardLink("External link", href="https://google.com"),
-                        ]),
-                    ]),
-            ]
 
 
             details_tab_content = [
@@ -403,8 +423,8 @@ def register_callbacks(dashapp):
                 ], justify='center', id='filter_bldgselect_dropdown'),
 # building detail cards
             dbc.Row([
-                    dbc.Col(html.Div(dbc.Card(card_content_bldg_detail, color="light"))),
-                    dbc.Col(html.Div(card_content_bldg_docs),className="mb-4"),
+                    dbc.Col(html.Div(dbc.Card(card_content_bldg_detail, color="light")),md=6,className="mb-4"),
+                    dbc.Col(html.Div(card_content_bldg_docs),md=6,className="mb-4"),
                 ]),
 # Data table
         dbc.Row([
