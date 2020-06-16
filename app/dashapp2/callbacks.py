@@ -73,10 +73,19 @@ def bldg_proj_query(table):
     except Exception as e :
         print("[!] ",e)
     else:
-        table_data = pd.read_sql_query("select * from {}".format(table),con=connection)
+        table_data = pd.read_sql_query("select * from {} where complete = 0".format(table),con=connection)
         return table_data
     finally:
         connection.close()
+
+def summary_card_content(df):
+    """return summary for all uncompleted priority classes"""
+    priority_class = list(df.groupby(['priority_class']).groups.keys())
+    priority_card_content = {}
+    for p in priority_class:
+        total_projects = len(df.groupby(['priority_class']).groups[p])
+        priority_card_content[p] = total_projects
+    return priority_card_content
 
 BUILDINGS_GEODATA = 'quercus.buildings'
 BUILDINGS_PROJECTS = 'catalpa.building_projects'
