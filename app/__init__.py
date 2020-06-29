@@ -11,17 +11,25 @@ def create_app():
     server = Flask(__name__)
     server.config.from_object(BaseConfig)
 
-    from app.dashapp1.layout import layout as layout1
+    from app.dashapp1.layout import layout as layout1 # CIP
     from app.dashapp1.callbacks import register_callbacks as register_callbacks1
     register_dashapp(server, 'Dashapp 1', 'dashapp1', layout1, register_callbacks1)
 
-    from app.dashapp2.layout import layout as layout2
+    from app.dashapp2.layout import layout as layout2 # Building
     from app.dashapp2.callbacks import register_callbacks as register_callbacks2
     register_dashapp(server, 'Dashapp 2', 'dashapp2', layout2, register_callbacks2)
 
-    from app.dashapp3.layout import layout as layout3
+    from app.dashapp3.layout import layout as layout3 # trails
     from app.dashapp3.callbacks import register_callbacks as register_callbacks3
     register_dashapp(server, 'Dashapp 3', 'dashapp3', layout3, register_callbacks3)
+
+    from app.dashapp4.layout import layout as layout4 # parking lots
+    from app.dashapp4.callbacks import register_callbacks as register_callbacks4
+    register_dashapp(server, 'Dashapp 4', 'dashapp4', layout4, register_callbacks4)
+
+    from app.dashapp5.layout import layout as layout5 # parcels licenses
+    from app.dashapp5.callbacks import register_callbacks as register_callbacks5
+    register_dashapp(server, 'Dashapp 5', 'dashapp5', layout5, register_callbacks5)
 
     register_extensions(server)
     register_blueprints(server)
