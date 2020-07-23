@@ -16,9 +16,9 @@ import json
 import geojson
 from pathlib import Path
 
-
 basedir = Path(os.path.abspath(os.path.dirname(__file__))).parent
 datadir = Path(basedir / 'assets')
+
 POSTGRESQL = os.environ.get('POSTGRESQL')
 
 #project data
