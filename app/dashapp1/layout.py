@@ -23,7 +23,8 @@ theme_colors = {
     'header': '#015249',
     'cell_color':'#535353',
     'table_header_color':'#A5A5AF',
-    'table_background_color':'#e4e4e7'
+    'table_background_color':'#e4e4e7',
+    'grand_total':'XXXXXX'
     }
 
 navbar = dbc.NavbarSimple(
@@ -58,8 +59,8 @@ body = dbc.Container(
             id="tabs",
             active_tab="summary",
             className="nav nav-pills nav-fill mt-3",
-            # style={"color": "#00AEF9"}, inactive tabe font color
-            # style={"background-color": "#00AEF9"}, tab background color
+            # style={"color": "#00AEF9"}, #inactive tabe font color
+            # style={"background-color": "#00AEF9"}, #tab background color
         ),
         html.Div(id="content"),
         ]),

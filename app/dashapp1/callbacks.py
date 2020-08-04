@@ -82,14 +82,114 @@ def table_query():
     finally:
         connection.close()
 
+def summary_tables(df_table):
+    """ return a category title and summary table for each category found in the CIP table."""
+    table_cats = []
+    df_table_catvals = df_table.category.unique()
+    for t in df_table_catvals:
+        table_cat = df_table[df_table.category == t]
+        table_cat = pd.pivot_table(table_cat, index=['subcategory'], aggfunc=np.sum, margins=True, margins_name="total")
+        table_cat = table_cat.reset_index()
+        table_cats.append((t,table_cat))
+        
+    sum_layout = []
+    for t in table_cats:
+        c,l = t 
+        table_id = "table" + c
+        tbl = dash_table.DataTable(
+                id=table_id,
+                data=l.to_dict('records'),
+                columns=[{"name": i, "id": i} for i in l.columns],
+                # columns=[
+                #         {"name": ["", "Project Category"],
+                #         "id": "subcategory"},
+                #         {"name": ["2020 Funds", "Existing C&D Funds"],
+                #         "id": "rollover_cd",
+                #         'type': 'numeric',
+                #         'format': FormatTemplate.money(0)},
+                #         {"name": ["2020 Funds", "2019 Bond Funds"],
+                #         "id": "bond",
+                #         'type': 'numeric',
+                #         'format': FormatTemplate.money(0)},
+                #         {"name": ["2020 Funds", "Grants & Fees"],
+                #         "id": "grant_funds", 
+                #         'type': 'numeric',
+                #         'format': FormatTemplate.money(0)},
+                #         {"name": ["2020 Funds", "2020 New C&D Funds"],
+                #         "id": "new_cd_funds_2020",
+                #         'type': 'numeric',
+                #         'format': FormatTemplate.money(0)},
+                #         {"name": ["2020 Funds", "Total 2020 Funds"],
+                #         "id": "all_2020_total",
+                #         'type': 'numeric',
+                #         'format': FormatTemplate.money(0)},
+                #         {"name": ["Project Year Funding", "Unfunded 2021-2024"],
+                #         "id": "21_24_total",
+                #         'type': 'numeric',
+                #         'format': FormatTemplate.money(0)},
+                #         {"name": ["Project Year Funding", "Total Est. Project Cost 2020-2024"],
+                #         "id": "est_proj_cost_20_24",
+                #         'type': 'numeric',
+                #         'format': FormatTemplate.money(0)},
+                #         ],
+                merge_duplicate_headers=True,
+                style_as_list_view=False,
+                style_cell={
+                    'textAlign': 'left',
+                    'padding': '5px',
+                    'height': 'auto',
+                    'minWidth': '35px',
+                    'maxWidth': '50px',
+                    'whiteSpace': 'normal',
+                    'color': theme_colors['cell_color']
+                    },
+                style_data={
+                    'whiteSpace': 'normal',
+                    'height': 'auto',
+                    'lineHeight': '17px'
+                    },
+                style_data_conditional=[
+                        {
+                            'if': {'row_index': 'odd'},
+                            'backgroundColor': theme_colors['table_background_color']
+                        },
+                        {
+                            'if': {
+                                'filter_query': '{subcategory} = "total"'
+                                },
+                            'backgroundColor': '#0074D9',
+                            'color': 'white'
+                        },
+                    ],
+                style_header={
+                    'textAlign': 'center',
+                    'fontWeight': 'bold',
+                    'color': 'white',
+                    'backgroundColor': theme_colors['table_header_color']
+                    },
+                )
+        ctg = html.Div(html.H3(c.title()))
+        sum_layout.append(ctg)
+        sum_layout.append(html.Div(tbl))
+    return sum_layout
+
+###################
+# Create GeoJsons #
+###################
+
 ### create commissioner district geojson ###
 comm_dist_gj = output_geojson(gj_query(COMMISSIONER_DISTRICT_TABLE))[0]
 
 ### query senate table for geoJson ###
 senate_gj = output_geojson(gj_query(SENATE_DISTRICT_TABLE))[0]
 
-### query house table for geoJson ##
+### query house table for geoJson ###
 house_gj = output_geojson(gj_query(HOUSE_DISTRICT_TABLE))[0]
+
+
+#######################
+# DFs for map display #
+#######################
 
 # df for list of commissioner districts to display on map
 commdist_df = json_normalize(output_geojson(gj_query(COMMISSIONER_DISTRICT_TABLE))[1]['features'])
@@ -109,14 +209,42 @@ house_df = pd.DataFrame(house_df.drop(columns=['geometry.coordinates', 'geometry
 house_df = house_df.rename(columns={'properties.district': 'district', 'properties.id': 'id'})
 hd_list = house_df.astype({'district': 'int32'}).sort_values('district')
 
-##############
-# for table
+#############
+# CIP table #
+#############
 table_df = table_query()
 table_df.set_index('cip_id', inplace=True, drop=False)
 
-### Summary tab ###
+######################
+# CIP Summary tables #
+######################
 
-### full CIP tab ###
+### Capital Spending by Funding Source ###
+
+# get table without new amenities
+table1 = table_df[table_df["new_amenity"].isnull()]
+
+# group table by category and subcategory
+table1_group = table1.groupby(['category', 'subcategory']).sum()
+
+# total all unfunded years 2021 - 2024 put in new col
+table1_group['21_24_total'] = table1_group[['yr2021', 'yr2022', 'yr2023', 'yr2024']].sum(axis=1)
+
+# total current year funds put in new col
+table1_group['all_2020_total'] = table1_group[['rollover_cd', 'bond', 'grant_funds', 'new_cd_funds_2020']].sum(axis=1)
+
+# total project costs across all years put in new col
+table1_group['est_proj_cost_20_24'] = table1_group[['21_24_total', 'all_2020_total']].sum(axis=1)
+
+# reset index
+table1_group_reset = table1_group.reset_index()
+
+# drop cols that are no longer needed
+table1_group_reset = table1_group_reset.drop(columns=['cip_id', 'yr2021', 'yr2022', 'yr2023', 'yr2024', 'total_2020', 'total_2021_2024'])
+
+### Projected Annaul Need table ###
+
+
 
 def register_callbacks(dashapp):
     @dashapp.callback(Output("content", "children"), [Input("tabs", "active_tab")])
@@ -124,7 +252,19 @@ def register_callbacks(dashapp):
         if at == "summary":
 
             summary_cip_tab = [
+                
+                # capital funding by source table
+                html.Div([
+                    html.H1("Capital Funding by Source"),
+                    html.Div(summary_tables(table1_group_reset)),
+                ]),
 
+                # annual need
+                html.Div([
+                    html.H1("Projected Annual Need"),
+                    html.Div(summary_tables(table1_group_reset)),
+                ]),
+                
                  # footer
                 dbc.Row(dbc.Col(html.Div(),style={'height': '100px', 'width': 'auto', 'background-color': theme_colors['header']}))        
 
@@ -215,26 +355,34 @@ def register_callbacks(dashapp):
                                         columns=[
                                                 {"name": ["", "Id"],
                                                 "id": "cip_id"},
+                                                {"name": ["", "Category"],
+                                                "id": "category"},
+                                                {"name": ["", "Sub-Category"],
+                                                "id": "subcategory"},
                                                 {"name": ["", "FPCC Zone"],
                                                 "id": "zone"},
                                                 {"name": ["", "Project Description"],
                                                 "id": "project_description"},
                                                 {"name": ["", "Other"],
                                                 "id": "other"},
-                                                {"name": ["", "Category"],
-                                                "id": "category"},
-                                                {"name": ["", "Sub-Category"],
-                                                "id": "subcategory"},
                                                 {"name": ["", "Funded"],
                                                 "id": "funded"},
                                                 {"name": ["", "Priority"],
                                                 "id": "priority"},
+                                                {"name": ["", "New Amenity"],
+                                                "id": "new_amenity"},
                                                 {"name": ["2020 Funds", "Rollover CD"],
-                                                "id": "rollover_cd"},
+                                                "id": "rollover_cd",
+                                                'type': 'numeric',
+                                                'format': FormatTemplate.money(0)},
                                                 {"name": ["2020 Funds", "Bond"],
-                                                "id": "bond"},
+                                                "id": "bond",
+                                                'type': 'numeric',
+                                                'format': FormatTemplate.money(0)},
                                                 {"name": ["2020 Funds", "Grant"],
-                                                "id": "grant"},
+                                                "id": "grant_funds", 
+                                                'type': 'numeric',
+                                                'format': FormatTemplate.money(0)},
                                                 {"name": ["2020 Funds", "2020 New CD Funds"],
                                                 "id": "new_cd_funds_2020",
                                                 'type': 'numeric',
