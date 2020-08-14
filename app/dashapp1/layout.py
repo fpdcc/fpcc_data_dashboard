@@ -14,18 +14,11 @@ import psycopg2 as pg
 import numpy as np
 import json
 import geojson
-from pathlib import Path
 
+from pathlib import Path
 basedir = Path(os.path.abspath(os.path.dirname(__file__))).parent
 datadir = Path(basedir / 'assets')
-
-theme_colors = {
-    'header': '#015249',
-    'cell_color':'#535353',
-    'table_header_color':'#A5A5AF',
-    'table_background_color':'#e4e4e7',
-    'grand_total':'XXXXXX'
-    }
+from ..assets.dashboard_colors import theme_colors
 
 navbar = dbc.NavbarSimple(
     children=[

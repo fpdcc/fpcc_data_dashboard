@@ -151,13 +151,13 @@ def summary_tables(df_table):
                 style_data_conditional=[
                         {
                             'if': {'row_index': 'odd'},
-                            'backgroundColor': theme_colors['table_background_color']
+                            'backgroundColor': theme_colors['table_background_color_odd']
                         },
                         {
                             'if': {
                                 'filter_query': '{subcategory} = "total"'
                                 },
-                            'backgroundColor': '#0074D9',
+                            'backgroundColor': theme_colors['grand_total'],
                             'color': 'white'
                         },
                     ],
@@ -168,7 +168,7 @@ def summary_tables(df_table):
                     'backgroundColor': theme_colors['table_header_color']
                     },
                 )
-        ctg = html.Div(html.H3(c.title()))
+        ctg = html.Div(html.H3(c.title()),className="my-4",)
         sum_layout.append(ctg)
         sum_layout.append(html.Div(tbl))
     return sum_layout
@@ -209,9 +209,9 @@ house_df = pd.DataFrame(house_df.drop(columns=['geometry.coordinates', 'geometry
 house_df = house_df.rename(columns={'properties.district': 'district', 'properties.id': 'id'})
 hd_list = house_df.astype({'district': 'int32'}).sort_values('district')
 
-#############
-# CIP table #
-#############
+#################
+# Get CIP table #
+#################
 table_df = table_query()
 table_df.set_index('cip_id', inplace=True, drop=False)
 
@@ -244,9 +244,17 @@ table1_group_reset = table1_group_reset.drop(columns=['cip_id', 'yr2021', 'yr202
 
 ### Projected Annaul Need table ###
 
+annual_need_table = table1_group.drop(columns=['rollover_cd', 'bond', 'grant_funds', 'new_cd_funds_2020','21_24_total'])
 
+annual_need_table['ave_annual_need_20_24'] = annual_need_table.mean(axis=1)
+
+#############
+# Callbacks #
+#############
 
 def register_callbacks(dashapp):
+
+    # tab switcher
     @dashapp.callback(Output("content", "children"), [Input("tabs", "active_tab")])
     def switch_tab(at):
         if at == "summary":
@@ -254,16 +262,33 @@ def register_callbacks(dashapp):
             summary_cip_tab = [
                 
                 # capital funding by source table
-                html.Div([
-                    html.H1("Capital Funding by Source"),
-                    html.Div(summary_tables(table1_group_reset)),
-                ]),
+                dbc.Row([
+                    dbc.Col(
+                        html.Div([
+                            html.Div(
+                                html.H1("Capital Funding by Source"),className="my-4",
+                            ),
+                            html.Div(
+                                summary_tables(table1_group_reset),
+                            ),
+                        ]),md=10,
+                    ),
+                ], justify='center'),
 
                 # annual need
-                html.Div([
-                    html.H1("Projected Annual Need"),
-                    html.Div(summary_tables(table1_group_reset)),
-                ]),
+                dbc.Row([
+                    dbc.Col(
+                        html.Div([
+                            html.Div(
+                                html.H1("Projected Annual Need"),className="my-4", 
+                                #style={'background-color': theme_colors['header']},
+                            ),
+                            html.Div(
+                                summary_tables(table1_group_reset),
+                            ),
+                        ]),md=10,
+                    ),
+                ], justify='center'),
                 
                  # footer
                 dbc.Row(dbc.Col(html.Div(),style={'height': '100px', 'width': 'auto', 'background-color': theme_colors['header']}))        
