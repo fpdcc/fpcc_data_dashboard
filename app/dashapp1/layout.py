@@ -52,7 +52,7 @@ body = dbc.Container(
             id="tabs",
             active_tab="summary",
             className="nav nav-pills nav-fill mt-3",
-            # style={"color": "#00AEF9"}, #inactive tabe font color
+            # style={"color": "#00AEF9"}, #inactive tab font color
             # style={"background-color": "#00AEF9"}, #tab background color
         ),
         html.Div(id="content"),
