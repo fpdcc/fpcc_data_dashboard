@@ -468,7 +468,7 @@ def register_callbacks(dashapp):
                                         style_data_conditional=[
                                                 {
                                                     'if': {'row_index': 'odd'},
-                                                    'backgroundColor': theme_colors['table_background_color']
+                                                    'backgroundColor': theme_colors['table_background_color_odd']
                                                 }
                                             ],
                                         #style_table={'maxHeight': '300px','overflowY': 'scroll'},
