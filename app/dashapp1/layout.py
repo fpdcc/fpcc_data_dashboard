@@ -1,5 +1,4 @@
 # Imports
-import sys, os
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
@@ -14,10 +13,6 @@ import psycopg2 as pg
 import numpy as np
 import json
 import geojson
-
-from pathlib import Path
-basedir = Path(os.path.abspath(os.path.dirname(__file__))).parent
-datadir = Path(basedir / 'assets')
 from ..assets.dashboard_colors import theme_colors
 
 navbar = dbc.NavbarSimple(

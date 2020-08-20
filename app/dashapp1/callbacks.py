@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import psycopg2 as pg
 from dash.dependencies import Input
@@ -5,10 +6,10 @@ from dash.dependencies import Output
 from .layout import * # import stuff from layout.py
 
 POSTGRESQL = os.environ.get('POSTGRESQL')
-COMMISSIONER_DISTRICT_TABLE = 'public.commdistricts'
-SENATE_DISTRICT_TABLE = 'public.il_senate_cb_2017_17_sldu_500k_cc'
-HOUSE_DISTRICT_TABLE = 'public.il_house_cb_2017_17_sldl_500k_cc'
-DATATABLE = 'public.cip2020_final1_7_2020'
+COMMISSIONER_DISTRICT_TABLE = os.environ.get('COMMISSIONER_DISTRICT_TABLE')
+SENATE_DISTRICT_TABLE = os.environ.get('SENATE_DISTRICT_TABLE')
+HOUSE_DISTRICT_TABLE = os.environ.get('HOUSE_DISTRICT_TABLE')
+DATATABLE = os.environ.get('DATATABLE')
 
 def create_map(dataf, geoj):
     """create map with a dataframe and geoJson then update layout"""

@@ -1,3 +1,4 @@
+import os
 from dash.dependencies import Input
 from dash.dependencies import Output
 from .layout import *
@@ -78,8 +79,9 @@ def bldg_proj_query(table):
     finally:
         connection.close()
 
-BUILDINGS_GEODATA = 'quercus.buildings'
-BUILDINGS_PROJECTS = 'catalpa.building_projects'
+POSTGRESQL = os.environ.get('POSTGRESQL')
+BUILDINGS_GEODATA = os.environ.get('BUILDINGS_GEODATA')
+BUILDINGS_PROJECTS = os.environ.get('BUILDINGS_PROJECTS')
 
 ### home tab ###
 priority_card_content = [
