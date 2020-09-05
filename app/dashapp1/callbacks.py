@@ -93,11 +93,12 @@ def summary_tables(df_table):
         table_cat = table_cat.reset_index()
         table_cats.append((t,table_cat))
         
-    sum_layout = []
+    cap_fund = []
+    proj_annual = []
     for t in table_cats:
         c,l = t 
         table_id = "table" + c
-        tbl = dash_table.DataTable(
+        cap_tbl = dash_table.DataTable(
                 id=table_id,
                 data=l.to_dict('records'),
                 # columns=[{"name": i, "id": i} for i in l.columns],
@@ -170,9 +171,81 @@ def summary_tables(df_table):
                     },
                 )
         ctg = html.Div(html.H3(c.title()),className="my-4",)
-        sum_layout.append(ctg)
-        sum_layout.append(html.Div(tbl))
-    return sum_layout
+        cap_fund.append(ctg)
+        cap_fund.append(html.Div(cap_tbl))
+
+        ann_tbl = dash_table.DataTable(
+                id="annual_" + table_id,
+                data=l.to_dict('records'),
+                columns=[
+                        {"name": ["", "Project Category"],
+                        "id": "subcategory"},
+                        {"name": ["Annual Funds", "2020"],
+                        "id": "yr2020",
+                        'type': 'numeric',
+                        'format': FormatTemplate.money(0)},
+                        {"name": ["Annual Funds", "2021"],
+                        "id": "yr2021",
+                        'type': 'numeric',
+                        'format': FormatTemplate.money(0)},
+                        {"name": ["Annual Funds", "2022"],
+                        "id": "yr2022", 
+                        'type': 'numeric',
+                        'format': FormatTemplate.money(0)},
+                        {"name": ["Annual Funds", "2023"],
+                        "id": "yr2023",
+                        'type': 'numeric',
+                        'format': FormatTemplate.money(0)},
+                        {"name": ["Annual Funds", "2024"],
+                        "id": "yr2024",
+                        'type': 'numeric',
+                        'format': FormatTemplate.money(0)},
+                        {"name": ["", "Average Annual Need"],
+                        "id": "ave_annual_need_20_24",
+                        'type': 'numeric',
+                        'format': FormatTemplate.money(0)},
+                        ],
+                merge_duplicate_headers=True,
+                style_as_list_view=False,
+                style_cell={
+                    'textAlign': 'left',
+                    'padding': '5px',
+                    'height': 'auto',
+                    'minWidth': '35px',
+                    'maxWidth': '50px',
+                    'whiteSpace': 'normal',
+                    'color': theme_colors['cell_color']
+                    },
+                style_data={
+                    'whiteSpace': 'normal',
+                    'height': 'auto',
+                    'lineHeight': '17px'
+                    },
+                style_data_conditional=[
+                        {
+                            'if': {'row_index': 'odd'},
+                            'backgroundColor': theme_colors['table_background_color_odd']
+                        },
+                        {
+                            'if': {
+                                'filter_query': '{subcategory} = "total"'
+                                },
+                            'backgroundColor': theme_colors['grand_total'],
+                            'color': 'white'
+                        },
+                    ],
+                style_header={
+                    'textAlign': 'center',
+                    'fontWeight': 'bold',
+                    'color': 'white',
+                    'backgroundColor': theme_colors['table_header_color']
+                    },
+                )
+        ctg = html.Div(html.H3(c.title()),className="my-4",)
+        proj_annual.append(ctg)
+        proj_annual.append(html.Div(ann_tbl))
+    
+    return (cap_fund, proj_annual)
 
 ###################
 # Create GeoJsons #
@@ -237,17 +310,19 @@ table1_group['all_2020_total'] = table1_group[['rollover_cd', 'bond', 'grant_fun
 # total project costs across all years put in new col
 table1_group['est_proj_cost_20_24'] = table1_group[['21_24_total', 'all_2020_total']].sum(axis=1)
 
-# reset index
-table1_group_reset = table1_group.reset_index()
-
 # drop cols that are no longer needed
-table1_group_reset = table1_group_reset.drop(columns=['cip_id', 'yr2021', 'yr2022', 'yr2023', 'yr2024', 'total_2020', 'total_2021_2024'])
+# table1_group_reset = table1_group_reset.drop(columns=['cip_id', 'yr2021', 'yr2022', 'yr2023', 'yr2024', 'total_2020', 'total_2021_2024'])
 
 ### Projected Annaul Need table ###
 
-annual_need_table = table1_group.drop(columns=['rollover_cd', 'bond', 'grant_funds', 'new_cd_funds_2020','21_24_total'])
+table1_group['yr2020'] = table1_group['all_2020_total'] - table1_group['grant_funds']
 
-annual_need_table['ave_annual_need_20_24'] = annual_need_table.mean(axis=1)
+# annual_need_table = table1_group.drop(columns=['rollover_cd', 'bond', 'grant_funds', 'new_cd_funds_2020','21_24_total'])
+
+table1_group['ave_annual_need_20_24'] = table1_group.mean(axis=1)
+
+# reset index
+table1_group_reset = table1_group.reset_index()
 
 #############
 # Callbacks #
@@ -270,7 +345,7 @@ def register_callbacks(dashapp):
                                 html.H1(html.Strong("Capital Funding by Source")),className="my-4",
                             ),
                             html.Div(
-                                summary_tables(table1_group_reset),
+                                summary_tables(table1_group_reset)[0],
                             ),
                         ]),md=10,
                     ),
@@ -285,7 +360,7 @@ def register_callbacks(dashapp):
                                 #style={'background-color': theme_colors['header']},
                             ),
                             html.Div(
-                                summary_tables(table1_group_reset),
+                                summary_tables(table1_group_reset)[1],
                             ),
                         ]),md=10,
                     ),
