@@ -9,6 +9,12 @@ export FLASK_APP=dashapp
 export FLASK_ENV=development
 export DATABASE_URL=sqlite:///$PWD/app.db
 export SECRET_KEY=secret_key_change_as_you_wish_make_it_long_123
+
+# Add any additional secret keys here as needed for testing
+
+export POSTGRESQL=XXX
+export MAPBOX=XXX
+export DATATABLE=XXX
 ```
 
 - Then run
